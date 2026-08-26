@@ -1,0 +1,10 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+# provider binary cache
+.terraform/providers/
+# Lambda build artifact (regenerate with: zip -j handler.zip handler.py)
+handler.zip
