@@ -1,5 +1,9 @@
 # AGENTS.md — AWS ML/IaaS Platform
 
+> **NEXT SESSION — read the remember file first.** Start with
+> `~/.hermes/.worktrees/.remember/remember.md` (the handoff State/Next/Context) so
+> you continue with full context from the session that built this repo.
+
 Project context for any agent (Hermes, Claude, Codex, OpenCode) working in this repo.
 
 ## Purpose
