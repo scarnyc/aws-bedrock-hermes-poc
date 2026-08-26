@@ -1,4 +1,4 @@
-# AGENTS.md — AWS ML/IaaS Platform
+# AGENTS.md — aws-bedrock-hermes-poc
 
 > **NEXT SESSION — read the remember file first.** Start with
 > `~/.hermes/.worktrees/.remember/remember.md` (the handoff State/Next/Context) so
@@ -12,54 +12,47 @@ Portfolio / open-source project to prep for a **Principal Machine Learning Engin
 role at **Accelerant** (specialty-insurance risk exchange). The role owns how ML + AI
 run in production: data/feature pipelines, training, inference, deployment, monitoring,
 and the infrastructure behind agentic AI. This repo demonstrates that capability with a
-real, working **AWS ML/IaaS platform** plus a **model-serving API** clients plug into.
-It is also the object of an OSS release + engineering blog post.
+real, working **AWS ML platform** where **Amazon Bedrock is the model provider**, plus
+the **platform services** (lineage, monitoring, governance) around it. It is also the
+object of an OSS release + engineering blog post.
 
-## The architecture — two tiers, one contract
+## The architecture — Bedrock-only, one /v1 contract
 
 ```
-CLIENTS (Hermes / OpenCode / any OpenAI SDK / unsloth models / A2A agents)
+CLIENTS (Hermes / any OpenAI SDK / A2A agents)
       │  HTTP  /v1/chat/completions
       ▼
- ┌──────────────────────────────┬──────────────────────────────────────────┐
- │ LOCAL dev (this Mac, 64GB)   │ AWS prod (IaC in this repo)              │
- │ llama-server (Metal)         │ Bedrock (managed)  OR  vLLM/llama.cpp    │
- │ Qwen3.6-35B-A3B (fits)       │ DeepSeek-V4-Flash 284B (GPU, 103GB+)     │
- │ 127.0.0.1:8000               │ EKS/EC2 GPU node + ECR + ALB             │
- └──────────────────────────────┴──────────────────────────────────────────┘
-      │  same response shape
+ Amazon Bedrock  (sole model provider — Claude / Nova / GPT-5.x / Llama / Mistral / DeepSeek-V3.2)
+      │  Hermes native Bedrock provider (main + aux); same /v1 shape
       ▼
  feature store, registry + lineage, monitoring (drift vs breakage vs decay)
 ```
 
-The **same OpenAI-compatible `/v1` shape** spans local and cloud, so a client switches
-backends with a one-line config change. That invariance is the whole point — it is the
-"training and serving compute feature same" + "dull, recoverable systems" thesis from the
-JD, made concrete.
+Everything runs on AWS. **No local model server.** The **same OpenAI-compatible `/v1`
+shape** spans the whole path, so a client plugs straight into Bedrock — that invariance is
+the "training and serving compute feature same" + "dull, recoverable systems" thesis from
+the JD, made concrete.
 
 ## Hard constraints + decisions (do not rediscover)
 
-- **64GB Apple-silicon box.** DeepSeek-V4-Flash is **284B total / 13B active** MoE with a
-  **103GB+ memory floor** — it does NOT fit here. The model that fits is
-  `Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf` (~21GB, cached under `~/.cache/huggingface`).
-- **vLLM needs CUDA → won't run on Apple Silicon.** Use llama.cpp (`llama-server`) or MLX
-  locally. `llama-server` exposes the OpenAI-compatible endpoint out of the box.
 - **Bedrock does NOT host DeepSeek V4 Flash.** It hosts Claude, Nova, GPT-5.x (via Mantle),
   Llama, Mistral, DeepSeek **V3.2**. Confirm the live list post-account:
   `aws bedrock list-foundation-models`.
 - **Bedrock is NOT free tier** (per-token from first call; new accounts get ~$200 credits,
-  ~6 months). For agent workloads that's ~$15/mo. Contrast: self-hosting 284B on a GPU is
-  **$8–25k/mo** → the lazy-correct call is **Bedrock API for daily work, self-host only as
-  a short demo**. Cost analysis is in README.md.
-- **AWS free tier gives no GPU** — only tiny CPU instances (t2.micro / t4g.small). It
-  covers the IaC/ops skeleton (VPC, S3, Lambda, SSM) but cannot host a frontier model.
+  ~6 months). For agent workloads that's ~$15/mo. Contrast: self-hosting a 284B model on a
+  GPU is **$8–25k/mo** → the lazy-correct call is **Bedrock API**. Cost analysis in README.md.
+- **AWS free tier gives no GPU** — only tiny CPU instances (t2.micro / t4g.small). It covers
+  the IaC/ops skeleton (VPC, S3, Lambda, SSM) but cannot host a frontier model.
+- **One provider for main AND aux:** Bedrock works for both (issue #11946 resolved). Use
+  **IAM access keys** (envchain `hermes-aws`), NOT Bearer-Token auth (#29309 open).
 
 ## Hermes integration
 
 - **API:** Hermes supports **Bedrock as a native provider** (no shim for the main path).
-- **Caveat:** the **auxiliary** route (compression / vision / summarizer) on a Bedrock-backed
-  endpoint is currently degraded (Hermes issue #11946) — it may need a LiteLLM /
-  OpenAI-compatible shim, or keep aux on another provider.
+- **Aux route:** Bedrock works for the **auxiliary** path too (compression / vision /
+  summarizer) — Hermes issue #11946 resolved (2026-04-24). No LiteLLM/shim needed.
+  Residual: #29309 (open) — aux can't use Bedrock *Bearer-Token* auth
+  (`AWS_BEARER_TOKEN_BEDROCK`); use IAM access keys (envchain `hermes-aws`) for main + aux.
 - **A2A:** both sides support it — Amazon **Bedrock AgentCore** speaks the **A2A protocol**,
   and Hermes has an **A2A adapter**. So Hermes ↔ Bedrock AgentCore over A2A is a real path.
 
@@ -83,7 +76,6 @@ API Gateway, Secrets Manager. None live in the `free-tier/` module. Enterprise a
 ```
 AGENTS.md                                   ← this file (distilled context)
 README.md                                   ← architecture summary + constraints
-scripts/serve-local.sh                      ← boot llama-server OpenAI-compat /v1 on the Mac
 infra/terraform/free-tier/                  ← validated, free-tier-safe IaC (VPC+S3+Fargate+Lambda+SSM+budget)
 infra/terraform/enterprise-reference.tf     ← enterprise variants (API GW, EKS, Secrets Mgr, CloudTrail, NAT) — commented
 ```
@@ -109,8 +101,7 @@ infra/terraform/enterprise-reference.tf     ← enterprise variants (API GW, EKS
 
 ## Status
 
-- [x] Local OpenAI-compatible serving API proven (llama-server, Qwen3.6-35B-A3B).
-- [x] Free-tier Terraform scaffold (valid HCL).
+- [x] Free-tier Terraform scaffold (valid HCL) + architecture distilled.
 - [x] Enterprise reference variants (commented).
 - [ ] AWS account + creds → `terraform plan`/`apply`.
 - [ ] Bedrock invocation + Hermes-as-Bedrock-client smoke test.

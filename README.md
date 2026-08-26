@@ -1,67 +1,57 @@
-# AWS ML / IaaS Platform — portfolio project
+# aws-bedrock-hermes-poc — Bedrock-only ML platform (portfolio)
 
 Prep target: **Principal Machine Learning Engineer @ Accelerant** (risk exchange).
 Goal: own how ML + AI run in production — data/feature pipelines, training, inference,
-deployment, monitoring, and the infra behind agentic AI. Build a credible, working
-portfolio stack on **AWS** with a **locally-served model API** clients can plug into.
+deployment, monitoring, and the infra behind agentic AI. A credible, working portfolio
+stack on AWS where **Amazon Bedrock is the model provider** and this repo adds the
+dull, recoverable systems the role is measured on: lineage, monitoring, governance.
 
 ## What this is
 
-Two tiers, one **OpenAI-compatible `/v1` contract** so clients don't change between them:
+One OpenAI-compatible `/v1` contract so clients plug straight into Bedrock, plus the
+platform around it:
 
 ```
-CLIENTS (Hermes / OpenCode / any OpenAI SDK / unsloth models / A2A agents)
-              │  HTTP  /v1/chat/completions
-              ▼
-  ┌───────────────────────────────┬──────────────────────────────────────────┐
-  │  LOCAL (dev — this box)       │  AWS (prod — IaC)                        │
-  │  llama-server (Metal)         │  vLLM / llama.cpp + DSpark               │
-  │  Qwen3.6-35B-A3B (fits 64GB)  │  DeepSeek-V4-Flash 284B (103GB+ / GPU)   │
-  │  127.0.0.1:8000               │  EKS/EC2 GPU node + ECR + ALB            │
-  └───────────────────────────────┴──────────────────────────────────────────┘
-              │  same response shape
-              ▼
-        feature store, registry + lineage, monitoring (drift/breakage/decay)
+CLIENTS (Hermes / any OpenAI SDK / A2A agents)
+      │  HTTP  /v1/chat/completions
+      ▼
+ Amazon Bedrock  (sole model provider — Claude / Nova / GPT-5.x / Llama / Mistral / DeepSeek-V3.2)
+      │  Hermes native Bedrock provider (main + aux); same /v1 shape everywhere
+      ▼
+ feature store, model registry + lineage, monitoring (drift vs breakage vs decay)
 ```
 
-Why the split: DeepSeek-V4-Flash is **284B total / 13B active** MoE with a ~103GB
-memory floor — it physically cannot run on a 64GB box. Local dev uses a model that
-fits (proven: Qwen3.6-35B-A3B). The 284B model runs behind vLLM/DSpark on AWS
-hardware (GPU / Inferentia). Identical OpenAI-compatible contract = one client.
+Everything runs on AWS. **No local model server** — Bedrock is the provider, full stop.
+Platform infra (IaC in this repo): VPC (public subnets, no NAT) + S3 Object-Lock lineage
+bucket + ECS Fargate app + Lambda Function URL ingress + SSM Parameter Store + CloudWatch
++ a $5 budget alarm. Enterprise escalation (API Gateway, EKS, Secrets Manager, CloudTrail,
+NAT/private subnets) is spelled out in `infra/terraform/enterprise-reference.tf`.
+
+## Why Bedrock, not a self-hosted GPU
+
+DeepSeek-V4-Flash is **284B total / 13B active** MoE with a ~103GB+ memory floor. AWS
+free tier has **no GPU**; GPU hosts for it run **$8–25k/mo**. Bedrock is per-token from
+the first call (~$15/mo at our volume) and needs zero GPU. Lazy-correct: Bedrock API for
+daily work, self-host only as a short demo.
 
 ## Status
 
-- [x] Local OpenAI-compatible serving API proven (llama-server, Qwen3.6-35B-A3B).
-- [ ] AWS IaC stack (Terraform: VPC + EKS/EC2 GPU + S3 + ECR + serving deployment + monitoring).
-- [ ] Model registry / lineage + governance/audit story (regulatory angle — Accelerant is insurance).
+- [x] Architecture + IaC scaffold (Terraform: VPC + S3 + Fargate + Lambda + SSM + budget).
+- [ ] AWS account + creds → `terraform plan`/`apply`.
+- [ ] Bedrock invocation + Hermes-as-Bedrock-client smoke test (main + aux).
+- [ ] Model registry / lineage + governance audit (regulatory angle — Accelerant is insurance).
 - [ ] Monitoring: data drift vs pipeline breakage vs performance decay; slow-label handling.
 - [ ] Agentic serving: orchestration, retrieval, caching, cost + latency control; A2A route.
 
-## Running the local API
-
-```bash
-scripts/serve-local.sh                      # defaults in this file
-curl -s http://127.0.0.1:8000/v1/models
-curl -s http://127.0.0.1:8000/v1/chat/completions -H 'Content-Type: application/json' \
-  -d '{"model":"qwen3.6-35b-a3b","messages":[{"role":"user","content":"Say hi in 5 words"}],"max_tokens":64}'
-# Stop: pkill -f llama-server   (frees ~24GB RAM)
-```
-
-## Hard constraints on this box (learned)
-
-- **RAM:** 64GB. → 284B models are out; 35B-A3B (13B active) fits.
-- **Runtime:** llama.cpp (Metal) works; **vLLM needs CUDA → won't run on Apple Silicon.**
-- **AWS creds:** none configured (`~/.aws` absent) — needed before any `terraform apply`.
-- **Terraform:** not installed (add via `brew install terraform`).
-
 ## Clients → the API
 
-- **curl:** any `/v1/*` call works (proven).
-- **Hermes:** point a profile at it as an OpenAI-compatible custom provider via
-  `model.base_url` + `model.api_key` (see hermes-agent skill). Don't flip the live session.
-- **unsloth / OpenAI SDK / A2A:** all consume the same `/v1` shape — A2A adds an
-  agent-card + task discovery layer on top, which is the next slice.
+- **Hermes:** native Bedrock provider — main **and** auxiliary routes (compression / vision
+  / summarizer) both work on Bedrock (issue #11946 resolved). Use **IAM access keys**
+  (envchain `hermes-aws`) — not Bearer-Token auth (#29309 open). Config:
+  `model.provider: bedrock`, `bedrock.region: us-east-1`.
+- **curl / any OpenAI SDK:** point at `/v1/*` on the deployed ingress; same contract.
+- **A2A agents:** Hermes and Bedrock AgentCore both speak A2A for the agent-card layer.
 
 ## Secrets
 
-AWS credentials belong in **envchain** (like `hermes-aws`), never in the repo or memory.
+AWS credentials belong in **envchain** (`hermes-aws`), never in the repo or memory.

@@ -21,6 +21,7 @@ variable "bedrock_model_id" {
 variable "notify_email" {
   description = "Email for the $5 budget alarm"
   type        = string
+  default     = "info@aipmbydesign.com"
 }
 variable "budget_start" {
   description = "Budget start date (YYYY-MM-01)"
