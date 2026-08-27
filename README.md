@@ -10,6 +10,10 @@ when the model does.
 
 ## The architecture
 
+<p align="center">
+  <img src="docs/aws-bedrock-hermes-poc-architecture.svg" alt="Bedrock-only ML platform architecture" width="880">
+</p>
+
 ```
 CLIENTS (Hermes / any OpenAI SDK / A2A agents)
       │  HTTP  /v1/chat/completions + /v1/models
