@@ -233,3 +233,55 @@ resource "aws_budgets_budget" "monthly" {
     subscriber_email_addresses = [var.notify_email]
   }
 }
+
+# ---------------------------------------------------------------------------
+# Observability — Bedrock model invocation logging (per-call model/tokens/
+# latency/errors) to CloudWatch + S3, and a latency alarm. This is the
+# "dull, recoverable" layer: alert on latency, not just downtime.
+# (drift vs breakage vs decay separation is a design doc, not IaC yet.)
+# ---------------------------------------------------------------------------
+resource "aws_iam_role" "bedrock_logging" {
+  name = "${var.project}-bedrock-logging"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Principal = { Service = "bedrock.amazonaws.com" }, Action = "sts:AssumeRole" }]
+  })
+}
+
+resource "aws_iam_role_policy" "bedrock_logging" {
+  role = aws_iam_role.bedrock_logging.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["cloudwatch:PutLogEvents", "logs:CreateLogStream", "logs:DescribeLogGroups"], Resource = aws_cloudwatch_log_group.ml.arn },
+      { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
+    ]
+  })
+}
+
+resource "aws_bedrock_model_invocation_logging_configuration" "ml" {
+  depends_on = [aws_iam_role_policy.bedrock_logging]
+  logging_config {
+    cloudwatch_config {
+      log_group_name = aws_cloudwatch_log_group.ml.name
+    }
+    s3_config {
+      bucket_name = aws_s3_bucket.ml_lineage.id
+      key_prefix  = "bedrock-invocation-logs/"
+    }
+  }
+}
+
+# ponytail: single latency alarm; add InvocationErrorRate/Throttling alarms if
+# the metric is present in-region, and the cost alarm is the budget above.
+resource "aws_cloudwatch_metric_alarm" "bedrock_latency" {
+  alarm_name          = "${var.project}-bedrock-latency"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "InvocationLatency"
+  namespace           = "AWS/Bedrock"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 5000
+  alarm_description   = "Bedrock invocation latency above 5s average"
+}
