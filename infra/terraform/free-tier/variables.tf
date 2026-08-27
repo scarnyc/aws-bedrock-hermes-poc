@@ -14,9 +14,8 @@ variable "bedrock_model_id" {
   default     = "us.anthropic.claude-opus-4-6-v1"
 }
 variable "notify_email" {
-  description = "Email for the $5 budget alarm"
+  description = "Email for the $5 budget alarm. Required — supply your own (terraform.tfvars or -var)."
   type        = string
-  default     = "info@aipmbydesign.com"
 }
 variable "budget_start" {
   description = "Budget start date (YYYY-MM-DD_HH:MM)"
@@ -24,7 +23,6 @@ variable "budget_start" {
   default     = "2026-09-01_00:00"
 }
 variable "ingress_cidr" {
-  description = "CIDR allowed to reach the /v1 proxy on :8000. Tighten (or remove) after testing."
+  description = "CIDR allowed to reach the /v1 proxy on :8000. Required — supply your own (terraform.tfvars or -var). Tighten (or remove) after testing."
   type        = string
-  default     = "70.19.106.72/32"
 }
