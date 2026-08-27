@@ -12,4 +12,3 @@ handler.zip
 tfplan
 # macOS + stray editor/session artifacts
 .DS_Store
-:memory:.ses
