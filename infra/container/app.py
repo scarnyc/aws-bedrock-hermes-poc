@@ -81,6 +81,14 @@ try:
             kw = {"modelId": model, "messages": convo, "inferenceConfig": cfg}
             if system:
                 kw["system"] = [{"text": s} for s in system]
+                # Bedrock prompt caching is Anthropic-only (Nemotron/others reject
+                # cachePoint). Cache the system prefix so repeated calls (e.g. a
+                # Hermes agent loop, same streamed system prompt) hit cacheRead
+                # pricing instead of full input. ponytail: only emit for large
+                # system prompts (>= ~2000 tokens char-approx); smaller ones would
+                # sit under the model's minimum cacheable length.
+                if model and "anthropic" in model and sum(len(s) for s in system) >= 8000:
+                    kw["system"].append({"cachePoint": {"type": "default"}})
             out = to_openai(_BR.converse(**kw), model)
             ok = True
         except Exception as e:  # noqa: BLE001 - surface generic error, record lineage

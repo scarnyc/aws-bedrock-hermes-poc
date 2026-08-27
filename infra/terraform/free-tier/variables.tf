@@ -9,9 +9,9 @@ variable "project" {
   default     = "ml-accent"
 }
 variable "bedrock_model_id" {
-  description = "Bedrock model to invoke. NVIDIA Nemotron runs on-demand with the bare model ID (unlike newer Claude models, which need a cross-region inference profile ID). e.g. nvidia.nemotron-super-3-120b"
+  description = "Bedrock model to invoke. Use the cross-region inference-profile ID for Claude (bare aliases like anthropic.claude-opus-4-6 are NOT on-demand invocable; profile = us.anthropic.<model>). Requires the Anthropic use-case details form to be submitted (else 'Model use case details have not been submitted'). NVIDIA Nemotron runs on-demand with the bare ID. e.g. us.anthropic.claude-opus-4-6-v1"
   type        = string
-  default     = "nvidia.nemotron-super-3-120b"
+  default     = "us.anthropic.claude-opus-4-6-v1"
 }
 variable "notify_email" {
   description = "Email for the $5 budget alarm"
