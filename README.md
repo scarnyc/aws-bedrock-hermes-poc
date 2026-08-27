@@ -1,4 +1,4 @@
-Bedrock-only ML platform
+# Bedrock-only ML platform
 
 A working **Amazon-Bedrock-only ML platform** on AWS: one OpenAI-compatible `/v1` contract,
 Amazon Bedrock as the *sole* model provider, and the dull, recoverable systems around it —
