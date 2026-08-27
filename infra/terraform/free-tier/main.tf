@@ -131,7 +131,7 @@ resource "aws_iam_role_policy" "ecs_execution" {
     Statement = [
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" },
       { Effect = "Allow", Action = ["ecr:GetAuthorizationToken", "ecr:BatchGetImage"], Resource = "*" },
-      { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = ["arn:aws:bedrock:*:*:inference-profile/*", "arn:aws:bedrock:*::foundation-model/*"] },
+      { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = ["arn:aws:bedrock:*:*:inference-profile/*", "arn:aws:bedrock:${var.region}::foundation-model/*"] },
       { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
     ]
   })
