@@ -9,9 +9,9 @@ variable "project" {
   default     = "ml-accent"
 }
 variable "bedrock_model_id" {
-  description = "Bedrock model to invoke (e.g. deepseek.v3.2, anthropic.claude-...). Confirm with aws bedrock list-foundation-models"
+  description = "Bedrock model to invoke. NVIDIA Nemotron runs on-demand with the bare model ID (unlike newer Claude models, which need a cross-region inference profile ID). e.g. nvidia.nemotron-super-3-120b"
   type        = string
-  default     = "deepseek.v3.2"
+  default     = "nvidia.nemotron-super-3-120b"
 }
 variable "notify_email" {
   description = "Email for the $5 budget alarm"
