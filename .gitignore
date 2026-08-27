@@ -8,3 +8,8 @@ crash.*.log
 .terraform/providers/
 # Lambda build artifact (regenerate with: zip -j handler.zip handler.py)
 handler.zip
+# Terraform plan artifact
+tfplan
+# macOS + stray editor/session artifacts
+.DS_Store
+:memory:.ses

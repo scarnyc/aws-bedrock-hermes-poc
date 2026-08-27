@@ -1,0 +1,57 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    { "type": "text", "id": "t_title", "x": 280, "y": 8, "text": "aws-bedrock-hermes-poc — Bedrock-only architecture", "fontSize": 24, "fontFamily": 1, "strokeColor": "#1e1e1e", "originalText": "aws-bedrock-hermes-poc — Bedrock-only architecture", "autoResize": true },
+
+    { "type": "rectangle", "id": "r_region", "x": 280, "y": 40, "width": 600, "height": 560, "roundness": { "type": 0 }, "strokeColor": "#1e1e1e", "strokeStyle": "dashed", "backgroundColor": "transparent" },
+    { "type": "text", "id": "t_region", "x": 302, "y": 52, "text": "AWS Region: us-east-1 · public subnets · no NAT · no ALB", "fontSize": 15, "fontFamily": 1, "strokeColor": "#1e1e1e", "originalText": "AWS Region: us-east-1 · public subnets · no NAT · no ALB", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_client", "x": 40, "y": 140, "width": 180, "height": 90, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "boundElements": [{ "id": "tx_client", "type": "text" }] },
+    { "type": "text", "id": "tx_client", "x": 45, "y": 150, "width": 170, "height": 70, "text": "Hermes\nOpenAI SDK\nA2A agents", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_client", "originalText": "Hermes\nOpenAI SDK\nA2A agents", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_lambda", "x": 300, "y": 110, "width": 160, "height": 70, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "boundElements": [{ "id": "tx_lambda", "type": "text" }] },
+    { "type": "text", "id": "tx_lambda", "x": 305, "y": 118, "width": 150, "height": 54, "text": "Lambda\nFunction URL", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_lambda", "originalText": "Lambda\nFunction URL", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_proxy", "x": 510, "y": 100, "width": 210, "height": 90, "roundness": { "type": 3 }, "backgroundColor": "#d0bfff", "fillStyle": "solid", "boundElements": [{ "id": "tx_proxy", "type": "text" }] },
+    { "type": "text", "id": "tx_proxy", "x": 515, "y": 108, "width": 200, "height": 74, "text": "OpenAI → Bedrock proxy\nFastAPI :8000\n/v1 chat + /v1 models", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_proxy", "originalText": "OpenAI → Bedrock proxy\nFastAPI :8000\n/v1 chat + /v1 models", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_bedrock", "x": 750, "y": 90, "width": 190, "height": 110, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "boundElements": [{ "id": "tx_bedrock", "type": "text" }] },
+    { "type": "text", "id": "tx_bedrock", "x": 755, "y": 100, "width": 180, "height": 90, "text": "Amazon Bedrock\nNemotron 3 Super 120B\nsole model provider", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_bedrock", "originalText": "Amazon Bedrock\nNemotron 3 Super 120B\nsole model provider", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_s3", "x": 510, "y": 280, "width": 210, "height": 85, "roundness": { "type": 3 }, "backgroundColor": "#c3fae8", "fillStyle": "solid", "boundElements": [{ "id": "tx_s3", "type": "text" }] },
+    { "type": "text", "id": "tx_s3", "x": 515, "y": 292, "width": 200, "height": 60, "text": "S3 lineage bucket\nObject Lock (WORM)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_s3", "originalText": "S3 lineage bucket\nObject Lock (WORM)", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_cw", "x": 750, "y": 280, "width": 190, "height": 85, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "boundElements": [{ "id": "tx_cw", "type": "text" }] },
+    { "type": "text", "id": "tx_cw", "x": 755, "y": 292, "width": 180, "height": 60, "text": "CloudWatch\ninvocation logs + metrics", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_cw", "originalText": "CloudWatch\ninvocation logs + metrics", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_ssm", "x": 300, "y": 450, "width": 170, "height": 70, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "boundElements": [{ "id": "tx_ssm", "type": "text" }] },
+    { "type": "text", "id": "tx_ssm", "x": 305, "y": 458, "width": 160, "height": 54, "text": "SSM Parameter Store\nconfig / model id", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_ssm", "originalText": "SSM Parameter Store\nconfig / model id", "autoResize": true },
+
+    { "type": "rectangle", "id": "bx_budget", "x": 510, "y": 450, "width": 190, "height": 70, "roundness": { "type": 3 }, "backgroundColor": "#fff3bf", "fillStyle": "solid", "boundElements": [{ "id": "tx_budget", "type": "text" }] },
+    { "type": "text", "id": "tx_budget", "x": 515, "y": 458, "width": 180, "height": 54, "text": "CloudWatch Budget\n$5 / month alarm", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "bx_budget", "originalText": "CloudWatch Budget\n$5 / month alarm", "autoResize": true },
+
+    { "type": "arrow", "id": "a1", "x": 220, "y": 165, "width": 290, "height": 0, "points": [[0,0],[290,0]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta1", "type": "text" }] },
+    { "type": "text", "id": "ta1", "x": 300, "y": 145, "width": 120, "height": 16, "text": "/v1/chat/completions", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a1", "originalText": "/v1/chat/completions", "autoResize": true },
+
+    { "type": "arrow", "id": "a2", "x": 460, "y": 145, "width": 50, "height": 0, "points": [[0,0],[50,0]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta2", "type": "text" }] },
+    { "type": "text", "id": "ta2", "x": 462, "y": 126, "width": 46, "height": 14, "text": "ingress", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a2", "originalText": "ingress", "autoResize": true },
+
+    { "type": "arrow", "id": "a3", "x": 720, "y": 150, "width": 30, "height": 0, "points": [[0,0],[30,0]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta3", "type": "text" }] },
+    { "type": "text", "id": "ta3", "x": 706, "y": 131, "width": 58, "height": 14, "text": "Converse", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a3", "originalText": "Converse", "autoResize": true },
+
+    { "type": "arrow", "id": "a4", "x": 615, "y": 190, "width": 0, "height": 90, "points": [[0,0],[0,90]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta4", "type": "text" }] },
+    { "type": "text", "id": "ta4", "x": 560, "y": 222, "width": 90, "height": 14, "text": "lineage write", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a4", "originalText": "lineage write", "autoResize": true },
+
+    { "type": "arrow", "id": "a5", "x": 720, "y": 180, "width": 100, "height": 100, "points": [[0,0],[100,100]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta5", "type": "text" }] },
+    { "type": "text", "id": "ta5", "x": 720, "y": 250, "width": 70, "height": 14, "text": "metrics", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a5", "originalText": "metrics", "autoResize": true },
+
+    { "type": "arrow", "id": "a6", "x": 385, "y": 435, "width": 115, "height": -245, "points": [[0,0],[115,0],[115,-245]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta6", "type": "text" }] },
+    { "type": "text", "id": "ta6", "x": 402, "y": 330, "width": 60, "height": 14, "text": "config", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a6", "originalText": "config", "autoResize": true },
+
+    { "type": "arrow", "id": "a7", "x": 700, "y": 445, "width": 50, "height": -80, "points": [[0,0],[50,-80]], "endArrowhead": "arrow", "boundElements": [{ "id": "ta7", "type": "text" }] },
+    { "type": "text", "id": "ta7", "x": 690, "y": 390, "width": 80, "height": 14, "text": "cost alarm", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "a7", "originalText": "cost alarm", "autoResize": true }
+  ],
+  "appState": { "viewBackgroundColor": "#ffffff" }
+}
