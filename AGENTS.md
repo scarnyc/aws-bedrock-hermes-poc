@@ -99,12 +99,34 @@ infra/terraform/enterprise-reference.tf     ← enterprise variants (API GW, EKS
   to `~/.hermes/hermes-agent` (via `git worktree list`), so this repo is invisible to it and
   will never be pruned.
 
+## Documented solutions
+
+`docs/solutions/` — captured solutions to past problems (bugs + patterns), organized by
+category with YAML frontmatter (`module`, `tags`, `problem_type`). Check before debugging or
+implementing in a documented area.
+
+## Deploy gotchas (verified 2026-08-27)
+
+- **Deploy-user IAM can't be hand-scoped.** The AWS provider surfaces read/apply-time actions
+  only during plan/apply, so an explicit action list keeps failing. Attach **`AdministratorAccess`**
+  for bootstrap, tighten after; the runtime roles (ecs-exec/lambda/bedrock-logging) are the real
+  least-privilege boundary.
+- **`aws_cloudwatch_log_group.arn` lacks a trailing `:*`.** Append it to the Bedrock logging
+  role's logs Resource, else `PutModelInvocationLoggingConfiguration` fails validation.
+- **Fargate defaults to x86_64.** An arm64 image (built on Apple Silicon) needs
+  `runtime_platform { operating_system_family = "LINUX"; cpu_architecture = "ARM64" }`,
+  or the container dies with `exec format error`.
+- **ECS needs `AWSServiceRoleForECS`.** Create `aws_iam_service_linked_role` + `depends_on`,
+  and give the execution role `ecr:GetDownloadUrlForLayer` (else image pull 403s).
+- **S3 object-lock requires versioning Enabled first** — `depends_on aws_s3_bucket_versioning`
+  on the object-lock config (else 409).
+
 ## Status
 
 - [x] Free-tier Terraform scaffold (valid HCL) + architecture distilled.
 - [x] Enterprise reference variants (commented).
-- [ ] AWS account + creds → `terraform plan`/`apply`.
-- [ ] Bedrock invocation + Hermes-as-Bedrock-client smoke test.
+- [x] AWS account + creds → `terraform plan`/`apply`.
+- [ ] Bedrock invocation + Hermes-as-Bedrock-client smoke test. (proxy /v1 endpoints + Bedrock invocation verified via curl; Hermes wired to it not yet)
 - [ ] Monitoring (drift vs breakage vs decay) + slow-label handling.
 - [ ] Lineage/registry + governance/audit (regulatory angle).
 - [ ] OSS cleanup + blog post.

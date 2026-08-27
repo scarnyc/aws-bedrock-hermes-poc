@@ -257,14 +257,13 @@ resource "aws_lambda_function_url" "health" {
   function_name      = aws_lambda_function.health.function_name
   authorization_type = "NONE"
 }
-# Public invocation is denied without this — aws_lambda_function_url alone
-# doesn't add a resource policy, so the URL returned 403. This allows it.
-resource "aws_lambda_permission" "url" {
-  function_name          = aws_lambda_function.health.function_name
-  action                 = "lambda:InvokeFunctionUrl"
-  principal              = "*"
-  function_url_auth_type = "NONE"
-}
+# NOTE: authorization_type=NONE makes Lambda auto-add a public-access resource
+# policy, so a separate aws_lambda_permission here is redundant. That redundant
+# permission was removed. NOTE for this account: unauthenticated requests to the
+# NONE-auth health_url still return 403 (verified: still 403 after removing the
+# permission AND after recreating the function URL) — the account refuses public
+# NONE-auth Function URL access. health_url needs AWS_IAM auth + sigv4 (or the
+# account guardrail investigated) to respond 200. The /v1 proxy is unaffected.
 resource "aws_iam_role" "lambda" {
   name = "${var.project}-lambda"
   assume_role_policy = jsonencode({
