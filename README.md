@@ -8,21 +8,11 @@ The point of the repo is the invariance that makes agentic AI production-safe: t
 `/v1` shape spans the whole path, so a client plugs straight into Bedrock and never changes
 when the model does.
 
-## The architecture
+## The Architecture
 
 <p align="center">
   <img src="docs/aws-bedrock-hermes-poc-architecture.svg" alt="Bedrock-only ML platform architecture" width="880">
 </p>
-
-```
-CLIENTS (Hermes / any OpenAI SDK / A2A agents)
-      │  HTTP  /v1/chat/completions + /v1/models
-      ▼
- Amazon Bedrock  (sole model provider — Claude / Nova / GPT-5.x / Llama / Mistral / DeepSeek-V3.2)
-      │  Converse API; model set via bedrock_model_id
-      ▼
- feature store, model registry + lineage, monitoring (drift vs breakage vs decay)
-```
 
 Everything runs on AWS. **No local model server** — Bedrock is the provider, full stop.
 
