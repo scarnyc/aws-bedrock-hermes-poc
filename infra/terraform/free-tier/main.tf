@@ -73,8 +73,11 @@ resource "aws_s3_bucket_versioning" "ml_lineage" {
   versioning_configuration { status = "Enabled" }
 }
 # Object Lock: regulatory audit trail (WORM for model/data provenance).
+# Depends on versioning being ENABLED first — object lock requires bucket
+# versioning, and without this ordered dep Terraform can race them -> 409.
 resource "aws_s3_bucket_object_lock_configuration" "ml_lineage" {
-  bucket = aws_s3_bucket.ml_lineage.id
+  bucket     = aws_s3_bucket.ml_lineage.id
+  depends_on = [aws_s3_bucket_versioning.ml_lineage]
   rule {
     default_retention {
       mode = "GOVERNANCE"
@@ -97,6 +100,15 @@ resource "aws_s3_bucket_public_access_block" "ml_lineage" {
 # ---------------------------------------------------------------------------
 resource "aws_ecs_cluster" "ml" {
   name = "${var.project}-ecs"
+}
+
+# Service-linked role AWSServiceRoleForECS — CreateService fails without it
+# ("Unable to assume the service linked role"). AWS auto-creates it on first
+# cluster create via console/SDK, but the provider won't race ahead; build it
+# explicitly so apply doesn't 400.
+resource "aws_iam_service_linked_role" "ecs" {
+  aws_service_name = "ecs.amazonaws.com"
+  description      = "Allows ECS to call AWS services on your behalf."
 }
 
 # ECR repo for the /v1->Bedrock proxy image. MUTABLE tags so the build script can
@@ -130,7 +142,49 @@ resource "aws_iam_role_policy" "ecs_execution" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" },
-      { Effect = "Allow", Action = ["ecr:GetAuthorizationToken", "ecr:BatchGetImage"], Resource = "*" },
+      { Effect = "Allow", Action = ["ecr:GetAuthorizationToken", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"], Resource = "*" },
+      { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = ["arn:aws:bedrock:*:*:inference-profile/*", "arn:aws:bedrock:${var.region}::foundation-model/*"] },
+      { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
+    ]
+  })
+}
+
+# Security group: let the /v1 proxy be reached on :8000 from the test IP only.
+# ponytail: single allow-CIDR (var.ingress_cidr) for testing; tighten per
+# deployment. This is a zero-auth Bedrock-calling surface — do NOT widen to
+# 0.0.0.0/0 in prod.
+resource "aws_security_group" "ml" {
+  name   = "${var.project}-app-sg"
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = [var.ingress_cidr]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = { Name = "${var.project}-app-sg" }
+}
+
+# Runtime task role — the container uses THIS to authenticate boto3 calls to
+# Bedrock + write lineage. (The execution role only covers ECS pull/logs.)
+resource "aws_iam_role" "task" {
+  name = "${var.project}-task"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" }, Action = "sts:AssumeRole" }]
+  })
+}
+resource "aws_iam_role_policy" "task" {
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
       { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = ["arn:aws:bedrock:*:*:inference-profile/*", "arn:aws:bedrock:${var.region}::foundation-model/*"] },
       { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
     ]
@@ -144,6 +198,13 @@ resource "aws_ecs_task_definition" "ml" {
   cpu                      = 512  # 0.5 vCPU
   memory                   = 1024 # 1 GB
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+  # Image is built on Apple Silicon (linux/arm64); Fargate defaults to x86_64,
+  # so pin the task to ARM64 or the container dies with "exec format error".
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "ARM64"
+  }
   container_definitions = jsonencode([{
     name      = "app"
     image     = "${aws_ecr_repository.app.repository_url}:latest"
@@ -170,8 +231,10 @@ resource "aws_ecs_service" "ml" {
   task_definition = aws_ecs_task_definition.ml.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+  depends_on      = [aws_iam_service_linked_role.ecs]
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups  = [aws_security_group.ml.id]
     assign_public_ip = true # public subnets, no NAT
   }
 }
@@ -193,6 +256,14 @@ resource "aws_lambda_function" "health" {
 resource "aws_lambda_function_url" "health" {
   function_name      = aws_lambda_function.health.function_name
   authorization_type = "NONE"
+}
+# Public invocation is denied without this — aws_lambda_function_url alone
+# doesn't add a resource policy, so the URL returned 403. This allows it.
+resource "aws_lambda_permission" "url" {
+  function_name          = aws_lambda_function.health.function_name
+  action                 = "lambda:InvokeFunctionUrl"
+  principal              = "*"
+  function_url_auth_type = "NONE"
 }
 resource "aws_iam_role" "lambda" {
   name = "${var.project}-lambda"
@@ -253,7 +324,7 @@ resource "aws_iam_role_policy" "bedrock_logging" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["cloudwatch:PutLogEvents", "logs:CreateLogStream", "logs:DescribeLogGroups"], Resource = aws_cloudwatch_log_group.ml.arn },
+      { Effect = "Allow", Action = ["logs:PutLogEvents", "logs:CreateLogStream", "logs:DescribeLogGroups", "logs:PutRetentionPolicy"], Resource = "${aws_cloudwatch_log_group.ml.arn}:*" },
       { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
     ]
   })
@@ -264,6 +335,7 @@ resource "aws_bedrock_model_invocation_logging_configuration" "ml" {
   logging_config {
     cloudwatch_config {
       log_group_name = aws_cloudwatch_log_group.ml.name
+      role_arn       = aws_iam_role.bedrock_logging.arn
     }
     s3_config {
       bucket_name = aws_s3_bucket.ml_lineage.id

@@ -23,3 +23,8 @@ variable "budget_start" {
   type        = string
   default     = "2026-09-01_00:00"
 }
+variable "ingress_cidr" {
+  description = "CIDR allowed to reach the /v1 proxy on :8000. Tighten (or remove) after testing."
+  type        = string
+  default     = "70.19.106.72/32"
+}
