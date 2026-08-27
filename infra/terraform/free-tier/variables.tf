@@ -8,11 +8,6 @@ variable "project" {
   type        = string
   default     = "ml-accent"
 }
-variable "ecr_image" {
-  description = "App container image (ECR) — build/push separately"
-  type        = string
-  default     = "000000000000.dkr.ecr.us-east-1.amazonaws.com/ml-accent-app:latest"
-}
 variable "bedrock_model_id" {
   description = "Bedrock model to invoke (e.g. deepseek.v3.2, anthropic.claude-...). Confirm with aws bedrock list-foundation-models"
   type        = string
@@ -24,7 +19,7 @@ variable "notify_email" {
   default     = "info@aipmbydesign.com"
 }
 variable "budget_start" {
-  description = "Budget start date (YYYY-MM-01)"
+  description = "Budget start date (YYYY-MM-DD_HH:MM)"
   type        = string
-  default     = "2026-09-01T00:00:00Z"
+  default     = "2026-09-01_00:00"
 }

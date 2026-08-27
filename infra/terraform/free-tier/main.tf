@@ -99,6 +99,14 @@ resource "aws_ecs_cluster" "ml" {
   name = "${var.project}-ecs"
 }
 
+# ECR repo for the /v1->Bedrock proxy image. MUTABLE tags so the build script can
+# push :latest. (ponytail: no lifecycle/scan policy until spend/security matters.)
+resource "aws_ecr_repository" "app" {
+  name                 = "${var.project}-app"
+  image_tag_mutability = "MUTABLE"
+  tags                 = { Name = "${var.project}-app" }
+}
+
 resource "aws_cloudwatch_log_group" "ml" {
   name              = "/ecs/${var.project}"
   retention_in_days = 7
@@ -123,7 +131,8 @@ resource "aws_iam_role_policy" "ecs_execution" {
     Statement = [
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" },
       { Effect = "Allow", Action = ["ecr:GetAuthorizationToken", "ecr:BatchGetImage"], Resource = "*" },
-      { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = "arn:aws:bedrock:*:*:inference-profile/*" }
+      { Effect = "Allow", Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], Resource = ["arn:aws:bedrock:*:*:inference-profile/*", "arn:aws:bedrock:*::foundation-model/*"] },
+      { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.ml_lineage.arn}/*" }
     ]
   })
 }
@@ -137,7 +146,7 @@ resource "aws_ecs_task_definition" "ml" {
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   container_definitions = jsonencode([{
     name      = "app"
-    image     = "${var.ecr_image}" # e.g. <acct>.dkr.ecr.<region>.amazonaws.com/ml-app:latest
+    image     = "${aws_ecr_repository.app.repository_url}:latest"
     essential = true
     environment = [
       { name = "AWS_REGION", value = var.region },

@@ -12,5 +12,6 @@ output "health_url" {
   value       = aws_lambda_function_url.health.function_url
 }
 output "app_image" {
-  value = var.ecr_image
+  description = "Proxy container image (ECR)"
+  value       = "${aws_ecr_repository.app.repository_url}:latest"
 }
